@@ -1,17 +1,28 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FaPencilAlt } from 'react-icons/fa';
-import { Entry, readEntries } from '../data';
+
+type Entry = {
+  entryId?: number;
+  title: string;
+  notes: string;
+  photoUrl: string;
+};
 
 export function EntryList() {
   const [entries, setEntries] = useState<Entry[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<unknown>();
 
   useEffect(() => {
     async function load() {
       try {
-        const entries = await readEntries();
+        const res = await fetch('/api/entries');
+        if (!res.ok) {
+          throw new Error(`Response status: ${res.status}`);
+        }
+
+        const entries = await res.json();
         setEntries(entries);
       } catch (err) {
         setError(err);

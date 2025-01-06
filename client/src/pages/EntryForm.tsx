@@ -1,12 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  type Entry,
-  addEntry,
-  readEntry,
-  removeEntry,
-  updateEntry,
-} from '../data';
 
 /**
  * Form that adds or edits an entry.
@@ -14,6 +7,14 @@ import {
  * If `entryId` === 'new' then creates a new entry.
  * Otherwise reads the entry and edits it.
  */
+
+type Entry = {
+  entryId?: number;
+  title: string;
+  notes: string;
+  photoUrl: string;
+};
+
 export function EntryForm() {
   const { entryId } = useParams();
   const [entry, setEntry] = useState<Entry>();
@@ -28,8 +29,14 @@ export function EntryForm() {
     async function load(id: number) {
       setIsLoading(true);
       try {
-        const entry = await readEntry(id);
-        if (!entry) throw new Error(`Entry with ID ${id} not found`);
+        const res = await fetch(`/api/entries/${id}`);
+        if (!res.ok) {
+          throw new Error(`Entry with ID ${id} not found. (${res.status})`);
+        }
+
+        const data = await res.json();
+        console.log('Fetched:', data);
+        const entry = data;
         setEntry(entry);
         setPhotoUrl(entry.photoUrl);
       } catch (err) {
@@ -53,10 +60,52 @@ export function EntryForm() {
     navigate('/');
   }
 
-  function handleDelete() {
+  async function updateEntry(entry: Entry) {
+    try {
+      const res = await fetch(`/api/entries/${entryId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status} ${res.statusText}`);
+      }
+    } catch (err) {
+      throw new Error('Failed to add entry. Please try again.');
+    }
+  }
+
+  async function addEntry(entry: Entry) {
+    try {
+      const res = await fetch('/api/entries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status} ${res.statusText}`);
+      }
+    } catch (err) {
+      throw new Error('Failed to add entry. Please try again.');
+    }
+  }
+
+  async function handleDelete() {
     if (!entry?.entryId) throw new Error('Should never happen');
-    removeEntry(entry.entryId);
-    navigate('/');
+    try {
+      const res = await fetch(`/api/entries/${entry.entryId}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status} ${res.statusText}`);
+      }
+      navigate('/');
+    } catch (err) {
+      throw new Error('Failed to delete an entry. entryId may not exist.');
+    }
   }
 
   if (isLoading) return <div>Loading...</div>;
